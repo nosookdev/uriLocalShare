@@ -108,7 +108,7 @@ impl P2PManager {
 
         let app_handle_clone = app_handle.clone();
 
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             let _ = swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse().unwrap());
             loop {
                 tokio::select! {

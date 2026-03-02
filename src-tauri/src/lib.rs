@@ -142,9 +142,21 @@ pub fn run() {
             shared_folders: Mutex::new(Vec::new()),
         })
         .setup(|app| {
-            let p2p_manager = P2PManager::new(app.handle().clone()).map_err(|e| e.to_string())?;
-            app.manage(p2p_manager);
-            Ok(())
+            let p2p_result = P2PManager::new(app.handle().clone());
+            match p2p_result {
+                Ok(p2p_manager) => {
+                    app.manage(p2p_manager);
+                    Ok(())
+                }
+                Err(e) => {
+                    let log_msg = format!("Setup failed: {}\n", e);
+                    if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open("crash_log.txt") {
+                        let _ = std::io::Write::write_all(&mut file, log_msg.as_bytes());
+                    }
+                    eprintln!("{}", log_msg);
+                    Err(e.into()) // Tauri will catch this and exit
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             greet, 
