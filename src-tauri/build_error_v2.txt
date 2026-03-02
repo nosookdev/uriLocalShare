@@ -1,0 +1,79 @@
+    Checking tauri-app v0.1.0 (C:\_new_ai_project\uriLocalShare\src-tauri)
+warning: unused import: `Deserialize`
+ --> src\lib.rs:2:13
+  |
+2 | use serde::{Deserialize, Serialize};
+  |             ^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `mdns`
+ --> src\p2p.rs:3:16
+  |
+3 |     gossipsub, mdns, noise, request_response, swarm::NetworkBehaviour, swarm::SwarmEvent, tcp, yamux,
+  |                ^^^^
+
+error: implementation of `FnOnce` is not general enough
+  --> src\p2p.rs:53:25
+   |
+53 |           let mut swarm = libp2p::SwarmBuilder::with_new_identity()
+   |  _________________________^
+54 | |             .with_tokio()
+55 | |             .with_tcp(
+56 | |                 tcp::Config::default(),
+57 | |                 |key| noise::Config::new(key),
+58 | |                 || yamux::Config::default(),
+59 | |             )?
+   | |______________^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `fn(&'2 libp2p::libp2p_identity::Keypair) -> Result<libp2p::libp2p_noise::Config, libp2p::libp2p_noise::Error>` must implement `FnOnce<(&'1 libp2p::libp2p_identity::Keypair,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&'2 libp2p::libp2p_identity::Keypair,)>`, for some specific lifetime `'2`
+
+error: implementation of `FnOnce` is not general enough
+  --> src\p2p.rs:53:25
+   |
+53 |           let mut swarm = libp2p::SwarmBuilder::with_new_identity()
+   |  _________________________^
+54 | |             .with_tokio()
+55 | |             .with_tcp(
+56 | |                 tcp::Config::default(),
+...  |
+86 | |                 Ok(OmniBehaviour { gossipsub, request_response })
+87 | |             })?
+   | |_______________^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `fn(&'2 libp2p::libp2p_identity::Keypair) -> Result<libp2p::libp2p_noise::Config, libp2p::libp2p_noise::Error>` must implement `FnOnce<(&'1 libp2p::libp2p_identity::Keypair,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&'2 libp2p::libp2p_identity::Keypair,)>`, for some specific lifetime `'2`
+
+error: implementation of `FnOnce` is not general enough
+  --> src\p2p.rs:53:25
+   |
+53 |           let mut swarm = libp2p::SwarmBuilder::with_new_identity()
+   |  _________________________^
+54 | |             .with_tokio()
+55 | |             .with_tcp(
+56 | |                 tcp::Config::default(),
+...  |
+88 | |             .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
+89 | |             .build();
+   | |____________________^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `fn(&'2 libp2p::libp2p_identity::Keypair) -> Result<libp2p::libp2p_noise::Config, libp2p::libp2p_noise::Error>` must implement `FnOnce<(&'1 libp2p::libp2p_identity::Keypair,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&'2 libp2p::libp2p_identity::Keypair,)>`, for some specific lifetime `'2`
+
+warning: unused variable: `message_id_fn`
+  --> src\p2p.rs:61:21
+   |
+61 |                 let message_id_fn = |message: &gossipsub::Message| {
+   |                     ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_message_id_fn`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `app_handle_clone`
+  --> src\p2p.rs:95:13
+   |
+95 |         let app_handle_clone = app_handle.clone();
+   |             ^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_app_handle_clone`
+
+warning: `tauri-app` (lib) generated 4 warnings
+error: could not compile `tauri-app` (lib) due to 3 previous errors; 4 warnings emitted

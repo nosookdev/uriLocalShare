@@ -1,0 +1,31 @@
+    Checking tauri-app v0.1.0 (C:\_new_ai_project\uriLocalShare\src-tauri)
+warning: unused import: `Deserialize`
+ --> src\lib.rs:2:13
+  |
+2 | use serde::{Deserialize, Serialize};
+  |             ^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `mdns`
+ --> src\p2p.rs:3:16
+  |
+3 |     gossipsub, mdns, noise, request_response, swarm::NetworkBehaviour, swarm::SwarmEvent, tcp, yamux,
+  |                ^^^^
+
+warning: unused import: `swarm::NetworkBehaviour`
+ --> src\p2p.rs:3:47
+  |
+3 |     gossipsub, mdns, noise, request_response, swarm::NetworkBehaviour, swarm::SwarmEvent, tcp, yamux,
+  |                                               ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused variable: `app_handle_clone`
+   --> src\p2p.rs:109:13
+    |
+109 |         let app_handle_clone = app_handle.clone();
+    |             ^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_app_handle_clone`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `tauri-app` (lib) generated 4 warnings (run `cargo fix --lib -p tauri-app` to apply 3 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.52s

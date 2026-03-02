@@ -1,0 +1,152 @@
+   Compiling tauri-app v0.1.0 (C:\_new_ai_project\uriLocalShare\src-tauri)
+error[E0432]: unresolved import `libp2p::StreamExt`
+ --> src\p2p.rs:4:5
+  |
+4 | use libp2p::StreamExt;
+  |     ^^^^^^^^---------
+  |     |       |
+  |     |       help: a similar name exists in the module: `Stream`
+  |     no `StreamExt` in the root
+
+error[E0433]: failed to resolve: could not find `json` in `request_response`
+  --> src\p2p.rs:16:41
+   |
+16 |     request_response: request_response::json::Behaviour<OmniRequest, OmniResponse>,
+   |                                         ^^^^ could not find `json` in `request_response`
+   |
+note: found an item that was configured out
+  --> C:\Users\uripapa7\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\libp2p-request-response-0.29.0\src\lib.rs:74:9
+   |
+73 | #[cfg(feature = "json")]
+   |       ---------------- the item is gated behind the `json` feature
+74 | pub mod json;
+   |         ^^^^
+
+error[E0433]: failed to resolve: could not find `ProtocolName` in `request_response`
+  --> src\p2p.rs:83:43
+   |
+83 |                         request_response::ProtocolName::from_static("/omnishare/1.0.0"),
+   |                                           ^^^^^^^^^^^^ could not find `ProtocolName` in `request_response`
+
+error[E0433]: failed to resolve: could not find `json` in `request_response`
+  --> src\p2p.rs:81:58
+   |
+81 |                 let request_response = request_response::json::Behaviour::new(
+   |                                                          ^^^^ could not find `json` in `request_response`
+   |
+note: found an item that was configured out
+  --> C:\Users\uripapa7\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\libp2p-request-response-0.29.0\src\lib.rs:74:9
+   |
+73 | #[cfg(feature = "json")]
+   |       ---------------- the item is gated behind the `json` feature
+74 | pub mod json;
+   |         ^^^^
+help: consider importing one of these items
+   |
+ 1 + use crate::p2p::gossipsub::Behaviour;
+   |
+ 1 + use crate::p2p::mdns::Behaviour;
+   |
+ 1 + use crate::p2p::mdns::tokio::Behaviour;
+   |
+ 1 + use crate::p2p::request_response::Behaviour;
+   |
+help: if you import `Behaviour`, refer to it directly
+   |
+81 -                 let request_response = request_response::json::Behaviour::new(
+81 +                 let request_response = Behaviour::new(
+   |
+
+warning: unused import: `Deserialize`
+ --> src\lib.rs:2:13
+  |
+2 | use serde::{Deserialize, Serialize};
+  |             ^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+error[E0599]: no method named `select_next_some` found for struct `Swarm<TBehaviour>` in the current scope
+    --> src\p2p.rs:102:35
+     |
+ 102 |                     event = swarm.select_next_some() => match event {
+     |                                   ^^^^^^^^^^^^^^^^ method not found in `Swarm<OmniBehaviour>`
+     |
+    ::: C:\Users\uripapa7\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\futures-util-0.3.32\src\stream\stream\mod.rs:1691:8
+     |
+1691 |     fn select_next_some(&mut self) -> SelectNextSome<'_, Self>
+     |        ---------------- the method is available for `Swarm<OmniBehaviour>` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: trait `StreamExt` which provides `select_next_some` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use libp2p::futures::StreamExt;
+     |
+
+error[E0027]: pattern does not mention field `connection_id`
+   --> src\p2p.rs:122:83
+    |
+122 |                           SwarmEvent::Behaviour(OmniBehaviourEvent::RequestResponse(request_response::Event::Message {
+    |  ___________________________________________________________________________________^
+123 | |                             peer: peer_id,
+124 | |                             message: request_response::Message::Request {
+125 | |                                 request,
+...   |
+128 | |                             },
+129 | |                         })) => {
+    | |_________________________^ missing field `connection_id`
+    |
+help: include the missing field in the pattern
+    |
+128 -                             },
+129 -                         })) => {
+128 +                             }, connection_id })) => {
+    |
+help: if you don't care about this missing field, you can explicitly ignore it
+    |
+128 -                             },
+129 -                         })) => {
+128 +                             }, connection_id: _ })) => {
+    |
+help: or always ignore missing fields here
+    |
+128 -                             },
+129 -                         })) => {
+128 +                             }, .. })) => {
+    |
+
+error[E0027]: pattern does not mention field `connection_id`
+   --> src\p2p.rs:148:83
+    |
+148 |                           SwarmEvent::Behaviour(OmniBehaviourEvent::RequestResponse(request_response::Event::Message {
+    |  ___________________________________________________________________________________^
+149 | |                             peer: peer_id,
+150 | |                             message: request_response::Message::Response {
+151 | |                                 response,
+152 | |                                 ..
+153 | |                             },
+154 | |                         })) => {
+    | |_________________________^ missing field `connection_id`
+    |
+help: include the missing field in the pattern
+    |
+153 -                             },
+154 -                         })) => {
+153 +                             }, connection_id })) => {
+    |
+help: if you don't care about this missing field, you can explicitly ignore it
+    |
+153 -                             },
+154 -                         })) => {
+153 +                             }, connection_id: _ })) => {
+    |
+help: or always ignore missing fields here
+    |
+153 -                             },
+154 -                         })) => {
+153 +                             }, .. })) => {
+    |
+
+Some errors have detailed explanations: E0027, E0432, E0433, E0599.
+For more information about an error, try `rustc --explain E0027`.
+warning: `tauri-app` (lib) generated 1 warning
+error: could not compile `tauri-app` (lib) due to 7 previous errors; 1 warning emitted
