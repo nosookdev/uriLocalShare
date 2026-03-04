@@ -25,9 +25,7 @@ interface SharedFolder {
 
 function App() {
   const [activeTab, setActiveTab] = useState("files");
-  const [shares, setShares] = useState<string[]>([]);
   const [discoveredDevices, setDiscoveredDevices] = useState<DiscoveredService[]>([]);
-  const [selectedServer, setSelectedServer] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [p2pMessages, setP2pMessages] = useState<P2PMessage[]>([]);
   const [sharedFolders, setSharedFolders] = useState<SharedFolder[]>([]);
@@ -47,7 +45,8 @@ function App() {
     // 서비스 발견 이벤트 리스너
     const unlistenDiscoveryPromise = listen<DiscoveredService>("service-discovered", (event) => {
       setDiscoveredDevices(prev => {
-        if (prev.find(d => d.ip === event.payload.ip)) return prev;
+        // IP와 이름이 모두 같은 경우 중복으로 간주하여 필터링
+        if (prev.find(d => d.ip === event.payload.ip && d.name === event.payload.name)) return prev;
         return [...prev, event.payload];
       });
     });
@@ -80,11 +79,25 @@ function App() {
       setActiveDownloadRequest({ peerId, path });
     });
 
+    const unlistenApproval = listen("download-approved-event", (event: any) => {
+      const [targetPeer, url] = event.payload;
+      console.log(`Download approved for ${targetPeer}: ${url}`);
+
+      // 실제 브라우저 다운로드 트리거
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', '');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+
     return () => {
       unlistenDiscoveryPromise.then(f => f());
       unlistenMessagesPromise.then(f => f());
       unlistenShares.then(u => u());
       unlistenDownload.then(u => u());
+      unlistenApproval.then(u => u());
     };
   }, []);
 
@@ -153,6 +166,14 @@ function App() {
     }
   };
 
+  const handleRequestDownload = async (peerId: string, path: string) => {
+    try {
+      await invoke("request_download", { peerId, path });
+    } catch (e) {
+      console.error("Failed to request download", e);
+    }
+  };
+
   const handleRequestRemoteShares = async (peerId: string) => {
     try {
       await invoke("request_remote_shares", { peerId });
@@ -163,6 +184,7 @@ function App() {
 
   const handleStartDiscovery = async () => {
     setIsLoading(true);
+    setDiscoveredDevices([]); // 탐색 시작 시 기존 목록 초기화
     try {
       await invoke("start_discovery");
     } catch (e) {
@@ -172,18 +194,21 @@ function App() {
     }
   };
 
-  const handleListShares = async (serverIp: string) => {
-    setIsLoading(true);
+  const handleApproveDownload = async () => {
+    if (!activeDownloadRequest) return;
     try {
-      const result: string[] = await invoke("list_shares", { serverIp });
-      setShares(result);
-      alert(`Shares from ${serverIp}: ${result.join(', ')}`);
+      await invoke("approve_download", {
+        peerId: activeDownloadRequest.peerId,
+        path: activeDownloadRequest.path
+      });
+      setActiveDownloadRequest(null);
     } catch (e) {
-      console.error(`Failed to list shares from ${serverIp}`, e);
-      alert(`공유 목록을 가져오지 못했습니다: ${e}`);
-    } finally {
-      setIsLoading(false);
+      console.error("Failed to approve download", e);
     }
+  };
+
+  const handleDenyDownload = () => {
+    setActiveDownloadRequest(null);
   };
 
   return (
@@ -255,9 +280,6 @@ function App() {
                     <button className="btn btn-primary" onClick={() => handleRequestRemoteShares(s.name)}>
                       공유 조회
                     </button>
-                    <button className="btn" style={{ background: 'rgba(255,255,255,0.05)', color: '#fff' }} onClick={() => setSelectedServer(s.ip)}>
-                      SMB 연결
-                    </button>
                   </div>
                   {remoteShares[s.name] && (
                     <div style={{ marginTop: '16px', textAlign: 'left', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '12px' }}>
@@ -265,7 +287,10 @@ function App() {
                       {remoteShares[s.name].map((share, idx) => (
                         <div key={idx} style={{ fontSize: '13px', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between' }}>
                           <span>📁 {share}</span>
-                          <span style={{ cursor: 'pointer', color: '#2d5bff' }}>⬇️</span>
+                          <span
+                            style={{ cursor: 'pointer', color: '#2d5bff' }}
+                            onClick={() => handleRequestDownload(s.name, share)}
+                          >⬇️</span>
                         </div>
                       ))}
                     </div>
@@ -393,7 +418,7 @@ function App() {
             <h3 style={{ marginTop: '32px', fontSize: '16px', color: '#94a3b8' }}>주변 검색된 기기</h3>
             <div className="discovered-list" style={{ marginTop: '12px' }}>
               {discoveredDevices.map(device => (
-                <div key={device.ip} className="file-list-item" style={{ justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)' }}>
+                <div key={device.ip + device.name} className="file-list-item" style={{ justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)' }}>
                   <div style={{ display: 'flex', alignItems: 'center' }}>
                     <span>💻</span>
                     <div style={{ marginLeft: '12px' }}>
@@ -428,10 +453,10 @@ function App() {
               친구가 <strong>{activeDownloadRequest.path}</strong> 폴더 입장을 요청했습니다. 허가하시겠습니까?
             </p>
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setActiveDownloadRequest(null)}>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleApproveDownload}>
                 승인
               </button>
-              <button className="btn" style={{ flex: 1, background: '#ef4444' }} onClick={() => setActiveDownloadRequest(null)}>
+              <button className="btn" style={{ flex: 1, background: '#ef4444' }} onClick={handleDenyDownload}>
                 거절
               </button>
             </div>
@@ -443,4 +468,3 @@ function App() {
 }
 
 export default App;
-

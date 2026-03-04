@@ -60,6 +60,8 @@ pub struct P2PMessage {
 pub enum P2PCommand {
     SendMessage(String),
     RequestShares(libp2p::PeerId),
+    RequestDownload { peer_id: libp2p::PeerId, path: String },
+    ApproveDownload { peer_id: libp2p::PeerId, path: String },
 }
 
 pub struct P2PManager {
@@ -106,7 +108,7 @@ impl P2PManager {
         swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
 
 
-        let app_handle_clone = app_handle.clone();
+        let _app_handle_clone = app_handle.clone();
 
         tauri::async_runtime::spawn(async move {
             let _ = swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse().unwrap());
@@ -119,6 +121,18 @@ impl P2PManager {
                             message,
                         })) => {
                             let content = String::from_utf8_lossy(&message.data).to_string();
+                            
+                            // 특수 제어 메시지 확인 (DOWNLOAD_APPROVED|대상PeerId|URL)
+                            if content.starts_with("DOWNLOAD_APPROVED|") {
+                                let parts: Vec<&str> = content.split('|').collect();
+                                if parts.len() == 3 {
+                                    let target_peer = parts[1];
+                                    let url = parts[2];
+                                    // 프런트엔드에 알림 (대상PeerId가 '나'인 경우에만 처리하도록 프런트에서 필터링 가능)
+                                    let _ = app_handle.emit("download-approved-event", (target_peer.to_string(), url.to_string()));
+                                }
+                            }
+
                             let msg = P2PMessage {
                                 sender: peer_id.to_string(),
                                 content,
@@ -182,6 +196,32 @@ impl P2PManager {
                             },
                             P2PCommand::RequestShares(peer_id) => {
                                 swarm.behaviour_mut().request_response.send_request(&peer_id, OmniRequest::ListShares);
+                            },
+                            P2PCommand::RequestDownload { peer_id, path } => {
+                                swarm.behaviour_mut().request_response.send_request(&peer_id, OmniRequest::RequestDownload { path });
+                            },
+                            P2PCommand::ApproveDownload { peer_id, path } => {
+                                // 로컬 IP 주소 가져오기
+                                let local_ip = local_ip_address::local_ip().unwrap_or_else(|_| "127.0.0.1".parse().unwrap());
+                                
+                                // AppState에서 실제 할당된 포트 가져오기
+                                let state = app_handle.state::<AppState>();
+                                let server_port = *state.local_server_port.lock().unwrap();
+                                
+                                // 경로 인코딩 (윈도우의 \와 : 문제 해결)
+                                let encoded_path = urlencoding::encode(&path);
+                                let url = format!("http://{}:{}/download?path={}", local_ip, server_port, encoded_path);
+                                
+                                // 사실 request_response에서는 매칭되는 channel이 있어야 하지만, 
+                                // 여기서는 새로운 request로 보내거나 (불가능), 
+                                // 기존 channel을 저장해뒀어야 함. 
+                                // 간단한 구현을 위해 여기서는 gossipsub으로 "특정인에게" 보냈다고 가정하거나,
+                                // (실제로는 request_response의 response channel을 맵에 보관해야 함)
+                                // 일단은 libp2p의 한계상 간단히 gossipsub으로 브로드캐스트하되 대상을 명시함.
+                                
+                                let approval_msg = format!("DOWNLOAD_APPROVED|{}|{}", peer_id, url);
+                                let topic = gossipsub::IdentTopic::new("omni-share-chat");
+                                let _ = swarm.behaviour_mut().gossipsub.publish(topic, approval_msg.as_bytes().to_vec());
                             }
                         }
                     }
@@ -200,6 +240,18 @@ impl P2PManager {
     pub async fn request_remote_shares(&self, peer_id_str: String) -> Result<(), Box<dyn Error>> {
         let peer_id = peer_id_str.parse::<libp2p::PeerId>()?;
         self.cmd_tx.send(P2PCommand::RequestShares(peer_id)).await?;
+        Ok(())
+    }
+
+    pub async fn request_download(&self, peer_id_str: String, path: String) -> Result<(), Box<dyn Error>> {
+        let peer_id = peer_id_str.parse::<libp2p::PeerId>()?;
+        self.cmd_tx.send(P2PCommand::RequestDownload { peer_id, path }).await?;
+        Ok(())
+    }
+
+    pub async fn approve_download(&self, peer_id_str: String, path: String) -> Result<(), Box<dyn Error>> {
+        let peer_id = peer_id_str.parse::<libp2p::PeerId>()?;
+        self.cmd_tx.send(P2PCommand::ApproveDownload { peer_id, path }).await?;
         Ok(())
     }
 }
